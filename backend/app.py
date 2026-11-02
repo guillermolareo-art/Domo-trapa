@@ -141,7 +141,7 @@ def stream_entrada_camera():
         command = [
             imageio_ffmpeg.get_ffmpeg_exe(),
             "-hide_banner", "-loglevel", "error", "-nostdin",
-            "-rtsp_transport", "tcp", "-rw_timeout", "8000000",
+            "-rtsp_transport", "tcp", "-timeout", "8000000",
             "-i", stream_url,
             "-an", "-vf", "fps=8,scale=640:-2", "-q:v", "6",
             "-f", "mpjpeg", "pipe:1",
