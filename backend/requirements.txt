@@ -3,3 +3,5 @@ flask-cors==4.0.0
 requests==2.31.0
 tuya-connector-python==0.1.1
 python-dotenv==1.0.1
+tapo==0.12.1
+imageio-ffmpeg==0.7.0
