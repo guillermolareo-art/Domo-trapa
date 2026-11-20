@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domo-trapa PWA</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .btn-gate {
+            background-color: #007bff;
+        }
+        .btn-tapo {
+            background-color: #28a745;
+        }
+        .btn-camera {
+            background-color: #6f42c1;
+        }
+        .camera-frame {
+            display: none;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: contain;
+            background: #111;
+            border-radius: 8px;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Control Domótico</h2>
+
+        <!-- Control de Cancela (Tuya) -->
+        <h3>Cancela</h3>
+        <button class="btn-gate" onclick="abrirCancela()">Abrir Cancela</button>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <!-- Control de Dispositivos Tapo -->
+        <h3>Dispositivos Tapo</h3>
+        <button class="btn-tapo" onclick="controlarTapo('luces')">Luces</button>
+        <button class="btn-tapo" onclick="controlarTapo('depuradora')">Depuradora</button>
+        <button class="btn-camera" id="camera-button" onclick="alternarCamara()">Ver cámara Entrada</button>
+        <button class="btn-tapo" onclick="controlarTapo('termo')">Termo</button>
+
+        <img id="camera-frame" class="camera-frame" alt="Vídeo en directo de la cámara Entrada">
+        <p id="camera-status">La cámara necesita una cuenta propia en Ajustes &gt; Configuración avanzada &gt; Cuenta de cámara.</p>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Lógica de Tuya (Cancela)
+        function abrirCancela() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = "Enviando pulso a la cancela...";
+            statusDiv.style.color = "#333";
+
+            fetch('/api/gate/pulse', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        statusDiv.innerText = "¡Pulso enviado a la cancela correctamente!";
+                        statusDiv.style.color = "green";
+                    } else {
+                        statusDiv.innerText = "Error en cancela: " + (data.error || "No respondió");
+                        statusDiv.style.color = "red";
+                    }
+                })
+                .catch(() => {
+                    statusDiv.innerText = "Error de red al conectar con la cancela.";
+                    statusDiv.style.color = "red";
+                });
+        }
+
+        // Lógica genérica de Tapo (Luces, Depuradora, Entrada, Termo)
+        function controlarTapo(deviceName) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = `Cambiando estado de ${deviceName}...`;
+            statusDiv.style.color = "#333";
+
+            fetch(`/api/tapo/${deviceName}/toggle`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        statusDiv.innerText = data.message;
+                        statusDiv.style.color = "green";
+                    } else {
+                        statusDiv.innerText = "Error: " + (data.error || "No se pudo conmutar");
+                        statusDiv.style.color = "red";
+                    }
+                })
+                .catch(() => {
+                    statusDiv.innerText = "Error de red al conectar con el dispositivo Tapo.";
+                    statusDiv.style.color = "red";
+                });
+        }
+
+        let cameraActive = false;
+        function alternarCamara() {
+            const button = document.getElementById('camera-button');
+            const frame = document.getElementById('camera-frame');
+            const cameraStatus = document.getElementById('camera-status');
+
+            if (cameraActive) {
+                frame.removeAttribute('src');
+                frame.style.display = 'none';
+                button.innerText = 'Ver cámara Entrada';
+                cameraStatus.innerText = 'Transmisión detenida.';
+                cameraActive = false;
+                return;
+            }
+
+            cameraStatus.innerText = 'Conectando con la cámara…';
+            frame.onerror = () => {
+                frame.style.display = 'none';
+                button.innerText = 'Ver cámara Entrada';
+                cameraStatus.innerText = 'No se pudo abrir el vídeo. Comprueba la cuenta de cámara y que RTSP esté disponible.';
+                cameraActive = false;
+            };
+            frame.src = `/api/camera/entrada/stream?inicio=${Date.now()}`;
+            frame.style.display = 'block';
+            button.innerText = 'Detener cámara';
+            cameraActive = true;
+        }
+    </script>
+</body>
+</html>
